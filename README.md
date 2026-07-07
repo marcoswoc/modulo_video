@@ -55,6 +55,14 @@ python main.py --video data/entrada/sessao01.mp4 --patient-id video_001 \
 python main.py --video data/entrada/sessao01.mp4 --sem-objetos
 ```
 
+### Rodar no Google Colab (sem instalar nada localmente)
+
+Abra o notebook **`colab_modulo_video.ipynb`** no Google Colab
+([colab.research.google.com](https://colab.research.google.com) → *GitHub* →
+cole a URL do repositório). Ele clona o projeto, instala as dependências,
+recebe o upload de um vídeo, roda o pipeline e baixa o alerta JSON e o vídeo
+anotado. Recomendado para máquinas sem GPU/processamento sobrando.
+
 ## Saída (schema combinado com o grupo)
 
 ```json

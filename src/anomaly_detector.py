@@ -76,6 +76,37 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
             "gravidade": 0.6,
         })
 
+    # --- Regra 5: possivel queda do paciente (YOLOv8) ---------------------
+    # Usamos .get() porque a deteccao de objetos pode estar desligada (--sem-objetos).
+    pq = metricas.get("prop_frames_queda", 0.0)
+    lim = LIMIARES["prop_frames_queda"]
+    if pq > lim:
+        anomalias.append({
+            "chave": "queda",
+            "descricao": f"Possivel queda (pessoa no chao) em {pq*100:.0f}% dos frames.",
+            "gravidade": _gravidade(pq, lim, teto=min(lim * 3, 1.0)),
+        })
+
+    # --- Regra 6: paciente ausente / rastreamento perdido (YOLOv8) --------
+    ps = metricas.get("prop_frames_sem_pessoa", 0.0)
+    lim = LIMIARES["prop_frames_sem_pessoa"]
+    if ps > lim:
+        anomalias.append({
+            "chave": "paciente_ausente",
+            "descricao": f"Paciente ausente ou fora do quadro em {ps*100:.0f}% dos frames.",
+            "gravidade": _gravidade(ps, lim, teto=1.0),
+        })
+
+    # --- Regra 7: numero de pessoas acima do esperado (YOLOv8) ------------
+    max_pessoas = metricas.get("max_pessoas", 0)
+    esperado = LIMIARES["pessoas_esperadas"]
+    if max_pessoas > esperado:
+        anomalias.append({
+            "chave": "multiplas_pessoas",
+            "descricao": f"Multiplas pessoas no quadro (ate {max_pessoas}); pode interferir na analise.",
+            "gravidade": 0.4,
+        })
+
     # TODO (evolucao): treinar um Isolation Forest com as metricas de varios
-    # pacientes "normais" e usar o score de anomalia como 5a regra/validacao.
+    # pacientes "normais" e usar o score de anomalia como validacao extra.
     return anomalias

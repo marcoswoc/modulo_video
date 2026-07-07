@@ -12,7 +12,9 @@ funcoes de cada modulo. Isso deixa o fluxo facil de ler e de testar.
 
 from __future__ import annotations
 
+from config import LIMIARES
 from src.pose_extractor import extrair_pose
+from src.object_detector import detectar_objetos, extrair_metricas_objetos
 from src.biomechanics import extrair_metricas
 from src.anomaly_detector import detectar_anomalias
 from src.risk_scoring import calcular_score, classificar_nivel, recomendar
@@ -23,12 +25,16 @@ def processar_video(
     caminho_video: str,
     patient_id: str,
     salvar_anotado: str | None = None,
+    usar_objetos: bool = True,
     verbose: bool = True,
 ) -> dict:
     """
     Executa o pipeline completo para UM video e devolve o alerta padronizado.
+
+    Se usar_objetos=True, roda tambem a deteccao com YOLOv8 (etapa 1b) e
+    junta as metricas de eventos (queda, ausencia, contagem) as biomecanicas.
     """
-    # (1) Video -> pontos-chave
+    # (1) Video -> pontos-chave (postura / MediaPipe)
     if verbose:
         print(f"[1/5] Extraindo pose de: {caminho_video}")
     registros = extrair_pose(caminho_video, salvar_anotado=salvar_anotado)
@@ -39,6 +45,15 @@ def processar_video(
     if verbose:
         print("[2/5] Calculando metricas biomecanicas...")
     metricas = extrair_metricas(registros)
+
+    # (1b + 2b) Video -> objetos/pessoas (YOLOv8) -> metricas de eventos
+    if usar_objetos:
+        if verbose:
+            print("[1b] Detectando objetos/pessoas com YOLOv8...")
+        registros_obj = detectar_objetos(caminho_video, verbose=verbose)
+        metricas_obj = extrair_metricas_objetos(registros_obj, LIMIARES["queda_razao_wh"])
+        metricas.update(metricas_obj)
+
     if verbose:
         for k, v in metricas.items():
             print(f"      - {k}: {v}")

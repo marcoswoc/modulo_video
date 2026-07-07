@@ -29,6 +29,8 @@ def main() -> None:
     parser.add_argument("--saida", help="Caminho para salvar o alerta em JSON")
     parser.add_argument("--csv", help="Caminho para anexar o alerta em um CSV")
     parser.add_argument("--anotado", help="Caminho para salvar o video com esqueleto desenhado")
+    parser.add_argument("--sem-objetos", action="store_true",
+                        help="Desativa a deteccao YOLOv8 (util em maquina fraca)")
     parser.add_argument("--silencioso", action="store_true", help="Nao imprime os passos")
     args = parser.parse_args()
 
@@ -36,6 +38,7 @@ def main() -> None:
         caminho_video=args.video,
         patient_id=args.patient_id,
         salvar_anotado=args.anotado,
+        usar_objetos=not args.sem_objetos,
         verbose=not args.silencioso,
     )
 

@@ -7,3 +7,8 @@ mediapipe==0.10.14
 opencv-python==4.10.0.84
 numpy==1.26.4
 pandas==2.2.2
+
+# Deteccao de objetos/pessoas (etapa 1b). Puxa o PyTorch como dependencia.
+# Obs.: em maquina fraca, prefira rodar no Google Colab. O modelo yolov8n.pt
+# (nano) e baixado automaticamente na primeira execucao.
+ultralytics>=8.2.0,<9.0.0

@@ -45,6 +45,17 @@ LIMIARES = {
     # Fora dessa faixa consideramos "velocidade fora do padrao".
     "velocidade_min": 0.02,
     "velocidade_max": 0.35,
+
+    # --- Eventos detectados pelo YOLOv8 (etapa 1b) ---
+    # Razao largura/altura da caixa da pessoa. >= 1 sugere alguem deitado;
+    # usamos 1.2 como margem de seguranca para nao confundir com agachamento.
+    "queda_razao_wh": 1.2,
+    # Fracao minima de frames em "possivel queda" para virar anomalia.
+    "prop_frames_queda": 0.10,   # 10% dos frames
+    # Fracao minima de frames SEM nenhuma pessoa para sinalizar ausencia.
+    "prop_frames_sem_pessoa": 0.30,   # 30% dos frames
+    # Numero de pessoas esperado no quadro (paciente em foco).
+    "pessoas_esperadas": 1,
 }
 
 # ---------------------------------------------------------------------------
@@ -56,6 +67,10 @@ PESOS_ANOMALIA = {
     "assimetria_marcha": 0.30,
     "instabilidade": 0.25,
     "velocidade_anormal": 0.15,
+    # Eventos do YOLOv8. A queda tem peso alto por ser evento critico de seguranca.
+    "queda": 0.90,
+    "paciente_ausente": 0.40,
+    "multiplas_pessoas": 0.20,
 }
 
 # ---------------------------------------------------------------------------
@@ -69,3 +84,13 @@ FAIXAS_RISCO = {
 
 # Confianca minima do landmark para considerarmos o ponto valido.
 CONFIANCA_MINIMA = 0.5
+
+# ---------------------------------------------------------------------------
+# 5) Configuracao do YOLOv8 (etapa 1b - deteccao de objetos/pessoas).
+# ---------------------------------------------------------------------------
+# 'yolov8n.pt' = versao "nano": a mais leve, ideal para CPU / Google Colab.
+# Alternativas mais precisas (e pesadas): yolov8s.pt, yolov8m.pt.
+YOLO_MODELO = "yolov8n.pt"
+
+# Confianca minima para aceitar uma deteccao do YOLO.
+YOLO_CONFIANCA = 0.4

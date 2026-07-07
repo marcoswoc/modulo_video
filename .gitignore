@@ -22,6 +22,12 @@ data/saida/*
 !data/entrada/.gitkeep
 !data/saida/.gitkeep
 
+# Exemplos para o relatorio tecnico: versiona apenas os JSON de exemplo.
+# Midias (mp4/avi/...) continuam ignoradas pelas regras acima.
+data/exemplos/*
+!data/exemplos/.gitkeep
+!data/exemplos/*.json
+
 # Editores / SO
 .vscode/
 .idea/

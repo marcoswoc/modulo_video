@@ -77,8 +77,18 @@ anotado. Recomendado para máquinas sem GPU/processamento sobrando.
 }
 ```
 
+## Dataset
+
+Este módulo processa **vídeo RGB** (via MediaPipe Pose), a mesma técnica vista
+em aula. Por isso usamos o **KIMORE** (exercícios de fisioterapia gravados com
+câmera RGB-D, gratuito para pesquisa).
+
+> Observação: o dataset *Multi-Gait-Posture* (PhysioNet) **não** foi adotado
+> porque contém apenas profundidade (depth) e esqueleto (CSV/C3D), sem vídeo
+> RGB, o que seria incompatível com o pipeline baseado em MediaPipe.
+
 ## Próximos passos (evolução)
 
-- Calibrar os limiares em `config.py` com o dataset **Multi-Gait-Posture**.
+- Calibrar os limiares em `config.py` com amostras do dataset **KIMORE**.
 - Opcional: treinar um **Isolation Forest** sobre as métricas (ver TODO em `anomaly_detector.py`).
 - Integrar com os módulos de áudio e clínico na etapa de fusão.

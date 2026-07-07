@@ -1,0 +1,29 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Arquivos de video (pesados demais para o git)
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Saidas geradas pelo pipeline
+data/entrada/*
+data/saida/*
+!data/entrada/.gitkeep
+!data/saida/.gitkeep
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

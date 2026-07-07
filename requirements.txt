@@ -1,0 +1,9 @@
+# Dependencias do modulo de video
+# Instale com:  pip install -r requirements.txt
+#
+# ATENCAO: o mediapipe funciona com Python 3.8 a 3.11 (evite 3.12+).
+
+mediapipe==0.10.14
+opencv-python==4.10.0.84
+numpy==1.26.4
+pandas==2.2.2

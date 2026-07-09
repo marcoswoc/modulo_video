@@ -62,7 +62,11 @@ def _abrir_gravador(caminho: str, fps: float, largura: int, altura: int) -> "cv2
     )
 
 
-def extrair_pose(caminho_video: str, salvar_anotado: str | None = None) -> list[dict]:
+def extrair_pose(
+    caminho_video: str,
+    salvar_anotado: str | None = None,
+    pular_frames: int = 1,
+) -> list[dict]:
     """
     Percorre o video frame a frame e extrai os landmarks do corpo.
 
@@ -73,12 +77,18 @@ def extrair_pose(caminho_video: str, salvar_anotado: str | None = None) -> list[
     salvar_anotado : str | None
         Se informado, grava um novo video com o esqueleto desenhado
         (otimo para a demonstracao de 15 min exigida no Tech Challenge).
+    pular_frames : int
+        Processa a pose a cada N frames (1 = todos). Valores maiores aceleram
+        muito em CPU (util para lotes/Colab); os timestamps continuam corretos
+        porque o indice do frame conta todos os frames lidos.
 
     Retorna
     -------
     list[dict]
         Um registro por frame com os landmarks nomeados.
     """
+    if pular_frames < 1:
+        pular_frames = 1
     cap = cv2.VideoCapture(caminho_video)
     if not cap.isOpened():
         raise FileNotFoundError(f"Nao consegui abrir o video: {caminho_video}")
@@ -109,30 +119,32 @@ def extrair_pose(caminho_video: str, salvar_anotado: str | None = None) -> list[
             if not ok:
                 break  # fim do video
 
-            # MediaPipe espera imagem em RGB; OpenCV entrega em BGR.
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            resultado = pose.process(frame_rgb)
+            # Processa a pose so nos frames escolhidos (economiza CPU).
+            if indice_frame % pular_frames == 0:
+                # MediaPipe espera imagem em RGB; OpenCV entrega em BGR.
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                resultado = pose.process(frame_rgb)
 
-            if resultado.pose_landmarks:
-                pontos = resultado.pose_landmarks.landmark
-                landmarks_nomeados = {}
-                for nome, idx in LANDMARKS.items():
-                    p = pontos[idx]
-                    landmarks_nomeados[nome] = (p.x, p.y, p.visibility)
+                if resultado.pose_landmarks:
+                    pontos = resultado.pose_landmarks.landmark
+                    landmarks_nomeados = {}
+                    for nome, idx in LANDMARKS.items():
+                        p = pontos[idx]
+                        landmarks_nomeados[nome] = (p.x, p.y, p.visibility)
 
-                registros.append({
-                    "frame": indice_frame,
-                    "timestamp": indice_frame / fps,
-                    "landmarks": landmarks_nomeados,
-                })
+                    registros.append({
+                        "frame": indice_frame,
+                        "timestamp": indice_frame / fps,
+                        "landmarks": landmarks_nomeados,
+                    })
 
-                # Desenha o esqueleto sobre o frame para o video anotado.
-                if writer is not None:
-                    mp_draw.draw_landmarks(
-                        frame,
-                        resultado.pose_landmarks,
-                        mp_pose.POSE_CONNECTIONS,
-                    )
+                    # Desenha o esqueleto sobre o frame para o video anotado.
+                    if writer is not None:
+                        mp_draw.draw_landmarks(
+                            frame,
+                            resultado.pose_landmarks,
+                            mp_pose.POSE_CONNECTIONS,
+                        )
 
             if writer is not None:
                 writer.write(frame)

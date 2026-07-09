@@ -27,6 +27,7 @@ data/saida/*
 data/exemplos/*
 !data/exemplos/.gitkeep
 !data/exemplos/*.json
+!data/exemplos/*.csv
 
 # Editores / SO
 .vscode/

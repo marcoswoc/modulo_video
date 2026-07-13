@@ -19,10 +19,17 @@ Uso
     python calibrar.py --raiz caminho/para/KIMORE
     python calibrar.py --raiz KIMORE --pular-frames 5 --max 40 --saida-csv data/exemplos/calibracao.csv
 
-Rotulagem (heuristica pelo caminho do arquivo)
-    - contem 'gpp' / 'backpain' / 'parkinson' / 'stroke' -> 'paciente'
-    - contem 'cg' / 'control'                            -> 'saudavel'
-    - caso contrario                                     -> 'desconhecido'
+Rotulagem (heuristica por SEGMENTO do caminho do arquivo)
+    - segmento 'gpp' / 'backpain' / 'parkinson' / 'stroke' -> 'paciente'
+    - segmento 'cg' / 'control' / 'healthy'                -> 'saudavel'
+    - caso contrario                                       -> 'desconhecido'
+
+Estrutura esperada do KIMORE (confira antes de processar com --listar):
+    KIMORE/CG/...   (Control Group  -> saudavel)
+    KIMORE/GPP/BackPain|Parkinson|Stroke/...  (pacientes)
+
+Dica: rode primeiro em modo dry-run para validar a rotulagem sem processar:
+    python calibrar.py --raiz KIMORE --listar
 """
 
 from __future__ import annotations
@@ -31,11 +38,19 @@ import argparse
 import csv
 import os
 
-from src.pose_extractor import extrair_pose
-from src.biomechanics import extrair_metricas
 from config import LIMIARES
 
+# Obs.: os imports pesados (cv2/mediapipe via src.pose_extractor) sao feitos
+# preguicosamente dentro de main(), apos o modo --listar. Assim o dry-run de
+# validacao da estrutura de pastas roda mesmo sem essas dependencias instaladas.
+
 EXTENSOES_VIDEO = (".mp4", ".avi", ".mov", ".mkv")
+
+# Tokens (por segmento de caminho) usados para inferir o grupo de cada video.
+# KIMORE usa as pastas de topo 'CG' (saudaveis) e 'GPP' (pacientes), com
+# subpastas BackPain/Parkinson/Stroke dentro de GPP.
+TOKENS_PACIENTE = ("gpp", "backpain", "parkinson", "stroke")
+TOKENS_SAUDAVEL = ("cg", "control", "controlgroup", "healthy")
 
 # Metricas biomecanicas que possuem limiar em config.py (as que calibramos).
 METRICAS = [
@@ -46,24 +61,55 @@ METRICAS = [
 ]
 
 
+def _tokens_caminho(caminho: str) -> set[str]:
+    """Quebra o caminho em tokens (segmentos e pedacos separados por _ ou -).
+
+    Trabalha com '/' (Colab/Linux) e '\\' (Windows) e evita falso positivo de
+    substring (ex.: 'cg' dentro de 'encoding') ao casar por token, nao por trecho.
+    """
+    normalizado = caminho.replace("\\", "/").lower()
+    tokens: set[str] = set()
+    for segmento in normalizado.split("/"):
+        tokens.add(segmento)
+        for pedaco in segmento.replace("-", "_").split("_"):
+            tokens.add(pedaco)
+    return tokens
+
+
 def rotular(caminho: str) -> str:
     """Infere o grupo (saudavel/paciente) a partir do caminho do arquivo."""
-    p = caminho.lower()
-    if any(k in p for k in ("gpp", "backpain", "back_pain", "parkinson", "stroke")):
+    tokens = _tokens_caminho(caminho)
+    if tokens & set(TOKENS_PACIENTE):
         return "paciente"
-    if "cg" in p or "control" in p:
+    if tokens & set(TOKENS_SAUDAVEL):
         return "saudavel"
     return "desconhecido"
 
 
-def listar_videos(raiz: str) -> list[str]:
-    """Encontra todos os videos abaixo de 'raiz' (recursivo)."""
+def listar_videos(raiz: str, filtro_nome: str = "") -> list[str]:
+    """Encontra todos os videos abaixo de 'raiz' (recursivo).
+
+    filtro_nome: se informado, mantem apenas arquivos cujo nome contenha esse
+    texto (ex.: 'rgb' para ignorar videos de depth). Comparacao sem maiusculas.
+    """
+    filtro = filtro_nome.lower()
     achados = []
     for pasta, _subpastas, arquivos in os.walk(raiz):
         for nome in arquivos:
-            if nome.lower().endswith(EXTENSOES_VIDEO):
-                achados.append(os.path.join(pasta, nome))
+            if not nome.lower().endswith(EXTENSOES_VIDEO):
+                continue
+            if filtro and filtro not in nome.lower():
+                continue
+            achados.append(os.path.join(pasta, nome))
     return sorted(achados)
+
+
+def resumo_grupos(videos: list[str]) -> dict[str, int]:
+    """Conta quantos videos caem em cada grupo inferido pela rotulagem."""
+    contagem = {"saudavel": 0, "paciente": 0, "desconhecido": 0}
+    for v in videos:
+        contagem[rotular(v)] += 1
+    return contagem
 
 
 def _percentil(valores: list[float], p: float) -> float:
@@ -106,16 +152,46 @@ def main() -> None:
                         help="Processa 1 a cada N frames (acelera em CPU). Padrao: 5")
     parser.add_argument("--max", type=int, default=0,
                         help="Limita o numero de videos (0 = todos). Util para teste rapido")
+    parser.add_argument("--filtro-nome", default="",
+                        help="Mantem so arquivos cujo nome contenha este texto (ex.: rgb)")
+    parser.add_argument("--listar", action="store_true",
+                        help="Dry-run: lista videos e rotulo inferido SEM processar (valida a estrutura de pastas)")
     args = parser.parse_args()
 
-    videos = listar_videos(args.raiz)
+    videos = listar_videos(args.raiz, filtro_nome=args.filtro_nome)
     if args.max > 0:
         videos = videos[: args.max]
     if not videos:
         print(f"Nenhum video encontrado em: {args.raiz}")
         return
 
-    print(f"Encontrados {len(videos)} videos. Processando (pular_frames={args.pular_frames})...\n")
+    contagem = resumo_grupos(videos)
+
+    # Modo dry-run: so lista e sai. Serve para conferir a rotulagem CG/GPP antes
+    # de gastar tempo com a extracao de pose.
+    if args.listar:
+        print(f"Encontrados {len(videos)} videos em: {args.raiz}\n")
+        for v in videos:
+            print(f"  {rotular(v):12s} {v}")
+        print(f"\n===== RESUMO POR GRUPO =====")
+        for grupo, n in contagem.items():
+            print(f"  {grupo:12s}: {n}")
+        if contagem["desconhecido"]:
+            print("\nAVISO: ha videos 'desconhecido' (fora de CG/GPP). Confira a")
+            print("estrutura de pastas ou ajuste TOKENS_SAUDAVEL/TOKENS_PACIENTE.")
+        if contagem["saudavel"] == 0 or contagem["paciente"] == 0:
+            print("\nAVISO: falta pelo menos um grupo. A calibracao precisa dos DOIS")
+            print("(saudavel e paciente) para comparar e sugerir limiares.")
+        return
+
+    # Imports pesados so aqui: quem chega neste ponto vai de fato processar.
+    from src.pose_extractor import extrair_pose
+    from src.biomechanics import extrair_metricas
+
+    print(f"Encontrados {len(videos)} videos "
+          f"(saudavel={contagem['saudavel']}, paciente={contagem['paciente']}, "
+          f"desconhecido={contagem['desconhecido']}).")
+    print(f"Processando (pular_frames={args.pular_frames})...\n")
 
     linhas: list[dict] = []
     for i, video in enumerate(videos, 1):

@@ -29,6 +29,9 @@ data/exemplos/*
 !data/exemplos/*.json
 !data/exemplos/*.csv
 
+# Material das aulas (PDFs do curso, personalizados/protegidos: nao versionar)
+Aulas/
+
 # Editores / SO
 .vscode/
 .idea/

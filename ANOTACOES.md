@@ -47,8 +47,14 @@ cd modulo_video
 
 - [ ] Baixar uma AMOSTRA do KIMORE (ex.: 5 sujeitos de CG + 5 de GPP), subir no
       Google Drive e rodar `calibrar.py` para ajustar os limiares em `config.py`.
-      Confirmar antes se a estrutura de pastas tem os tokens CG/GPP (a função
-      `rotular()` em `calibrar.py` depende disso; ajustar se necessário).
+      ANTES de processar, validar a estrutura com o modo dry-run:
+      `python calibrar.py --raiz .../KIMORE_amostra --listar`
+      (lista os vídeos e o rótulo saudavel/paciente/desconhecido, sem processar
+      e sem precisar de cv2/mediapipe). A rotulagem agora casa por SEGMENTO do
+      caminho (CG -> saudavel; GPP/BackPain/Parkinson/Stroke -> paciente). Se
+      aparecer "desconhecido", ajustar TOKENS_SAUDAVEL/TOKENS_PACIENTE no topo
+      de `calibrar.py`. Se houver vídeos de depth junto, filtrar com
+      `--filtro-nome rgb`.
 - [ ] Versionar um JSON de exemplo em `data/exemplos/` (e o CSV de calibração).
 - [ ] Escrever o relatório técnico da parte de vídeo (fluxo, modelos, métricas,
       exemplos, justificativa do dataset).
@@ -73,5 +79,10 @@ python main.py --video data/entrada/video.mp4 --patient-id video_001 \
 python main.py --video data/entrada/video.mp4 --sem-objetos
 
 # Calibração com dataset
+# 1) valida a estrutura de pastas (dry-run, não processa):
+python calibrar.py --raiz "/content/drive/MyDrive/KIMORE_amostra" --listar
+# 2) processa e sugere limiares:
 python calibrar.py --raiz "/content/drive/MyDrive/KIMORE_amostra" --pular-frames 6 --max 40
+# (opcional) se houver vídeos de depth junto dos RGB:
+python calibrar.py --raiz "/content/drive/MyDrive/KIMORE_amostra" --listar --filtro-nome rgb
 ```

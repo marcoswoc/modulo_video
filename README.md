@@ -36,23 +36,38 @@ O módulo usa **dois modelos** de visão, como pede o desafio:
 | `src/pipeline.py` | Orquestra as 5 etapas |
 | `main.py` | Linha de comando (CLI) |
 
-## Como rodar
+## Rodar local (Windows / PowerShell)
 
-```bash
-# 1) Crie um ambiente virtual (Python 3.10 ou 3.11 recomendado)
+Requer **Python 3.10 ou 3.11** (o MediaPipe não funciona em 3.12+).
+
+```powershell
+# 1) Ambiente virtual
 python -m venv .venv
-.venv\Scripts\activate        # Windows
+.\.venv\Scripts\Activate.ps1
+# Se o PowerShell bloquear a ativacao, rode uma vez e ative de novo:
+#   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-# 2) Instale as dependências
+# 2) Instalar dependencias (baixa o PyTorch via ultralytics; pode demorar)
 pip install -r requirements.txt
 
-# 3) Coloque um vídeo em data/entrada/ e rode:
-python main.py --video data/entrada/sessao01.mp4 --patient-id video_001 \
-               --saida data/saida/video_001.json \
-               --anotado data/saida/video_001_anotado.mp4
+# 3) Coloque um video em data\entrada\ e rode:
+python main.py --video data\entrada\sessao01.mp4 --patient-id video_001 --saida data\saida\video_001.json --anotado data\saida\video_001_anotado.mp4
 
-# Em máquina fraca, dá para desativar o YOLOv8 (roda só a postura):
-python main.py --video data/entrada/sessao01.mp4 --sem-objetos
+# Em maquina fraca, desative o YOLOv8 (roda so a postura):
+python main.py --video data\entrada\sessao01.mp4 --sem-objetos
+```
+
+O resultado sai em `data\saida\`: o alerta `.json` e o video `_anotado.mp4` (codec
+`mp4v`, abre no VLC ou no player do Windows).
+
+### Calibrar os limiares (opcional)
+
+Precisa do REHAB24-6 na maquina (descompacte o `videos.zip` e deixe o
+`Segmentation.csv` junto):
+
+```powershell
+python calibrar.py --raiz "C:\caminho\REHAB24-6" --listar --camera Camera17
+python calibrar.py --raiz "C:\caminho\REHAB24-6" --camera Camera17 --exercise 6 --pular-frames 5
 ```
 
 ### Rodar no Google Colab (sem instalar nada localmente)

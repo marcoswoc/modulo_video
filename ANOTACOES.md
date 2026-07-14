@@ -33,28 +33,46 @@ cd modulo_video
    recomendacao). Não mudar sem alinhar com o grupo.
 2. **YOLOv8 é responsabilidade do Marcos** (parte de vídeo). Já implementado.
    A spec cita "modelos como OpenPose e YOLOv8"; o "como" indica exemplos.
-3. **Dataset: usar KIMORE (vídeo RGB), NÃO o Multi-Gait-Posture.**
-   Motivo: o Multi-Gait-Posture (PhysioNet) só tem depth + esqueleto (CSV/C3D),
-   sem vídeo RGB, incompatível com o pipeline (MediaPipe usa RGB). Usá-lo forçaria
-   uma técnica não ensinada em aula. Datasets na spec são só "sugestão".
-   - KIMORE: https://vrai.dii.univpm.it/content/kimore-dataset
-   - Download (SharePoint): https://univpm-my.sharepoint.com/:f:/g/personal/p008099_staff_univpm_it/EiwbKIzk6N9NoJQx4J8aubIBx0o7tIa1XwclWp1NmRkA-w
+3. **Dataset: usar REHAB24-6 (vídeo RGB público), NÃO o Multi-Gait-Posture nem o KIMORE.**
+   Histórico das decisões:
+   - Multi-Gait-Posture (PhysioNet): só depth + esqueleto (CSV/C3D), sem RGB.
+     Incompatível com MediaPipe (que usa RGB). Descartado.
+   - KIMORE: parecia ter RGB, mas o **RGB do KIMORE só é liberado sob pedido ao
+     autor + assinatura de EULA**; o download público traz só depth + esqueleto
+     (mesma limitação do Multi-Gait-Posture). Descartado.
+   - **REHAB24-6 (escolhido)**: vídeo RGB de exercícios de reabilitação, download
+     livre no Zenodo (CC-BY-NC, sem EULA). Traz rótulo binário de execução
+     correta (1) x incorreta (0) por repetição, o que mapeia direto no conceito de
+     anomalia da spec ("movimentos fora do padrão esperado"). Exercícios: abdução
+     de braço, transições de braço, flexão, abdução de perna, afundo, agachamento.
+     Datasets na spec são só "sugestão", então a troca é legítima.
+   - REHAB24-6 (Zenodo): https://zenodo.org/records/13305826
+   - Estrutura: `videos.zip` (RGB, 2 câmeras: Camera17 horizontal, Camera18
+     vertical) + `Segmentation.csv` (sep=';', 1 linha por repetição).
+   - Colunas do CSV: video_id (ex.: PM_000), repetition_number, exercise_id (1-6),
+     person_id, first_frame, last_frame, cam17_orientation, mocap_erroneous,
+     exercise_subtype, lights_on, extra_person_in_cam17, extra_person_in_cam18,
+     correctness (1=correto, 0=incorreto).
+   - ATENCAO: correctness varia POR REPETIÇÃO dentro do mesmo vídeo, então a
+     calibração fatia por janela [first_frame, last_frame], não por vídeo inteiro.
 4. **Alinhamento com as aulas:** a Aula 03 ensinou exatamente MediaPipe Pose +
    heurística sobre landmarks. A biomecânica (ângulos/simetria) é extensão natural.
    YOLOv8, gait e leitura de depth NÃO foram ensinados.
 
 ## Pendências (próximos passos)
 
-- [ ] Baixar uma AMOSTRA do KIMORE (ex.: 5 sujeitos de CG + 5 de GPP), subir no
-      Google Drive e rodar `calibrar.py` para ajustar os limiares em `config.py`.
-      ANTES de processar, validar a estrutura com o modo dry-run:
-      `python calibrar.py --raiz .../KIMORE_amostra --listar`
-      (lista os vídeos e o rótulo saudavel/paciente/desconhecido, sem processar
-      e sem precisar de cv2/mediapipe). A rotulagem agora casa por SEGMENTO do
-      caminho (CG -> saudavel; GPP/BackPain/Parkinson/Stroke -> paciente). Se
-      aparecer "desconhecido", ajustar TOKENS_SAUDAVEL/TOKENS_PACIENTE no topo
-      de `calibrar.py`. Se houver vídeos de depth junto, filtrar com
-      `--filtro-nome rgb`.
+- [ ] Baixar o REHAB24-6 (Zenodo): `videos.zip` (2.7 GB) + `Segmentation.csv`.
+      Descompactar os vídeos numa pasta, deixar o `Segmentation.csv` junto (ou
+      apontar com `--csv`), subir no Google Drive.
+      ANTES de processar, validar com o dry-run (não processa, não precisa de
+      cv2/mediapipe):
+      `python calibrar.py --raiz .../REHAB24-6 --listar`
+      Isso mostra, por gravação (video_id), qual arquivo de vídeo casou e quantas
+      repetições corretas/incorretas há. Se o matching de vídeo falhar, conferir o
+      nome real dos arquivos e passar `--camera <token>` (ex.: Camera18) para fixar
+      uma câmera. Depois rodar de fato (ex.: focar 1 exercício):
+      `python calibrar.py --raiz .../REHAB24-6 --exercise 6 --pular-frames 3`
+      A saída compara métricas de execução CORRETA x INCORRETA e sugere limiares.
 - [ ] Versionar um JSON de exemplo em `data/exemplos/` (e o CSV de calibração).
 - [ ] Escrever o relatório técnico da parte de vídeo (fluxo, modelos, métricas,
       exemplos, justificativa do dataset).
@@ -66,7 +84,8 @@ cd modulo_video
    Text Analytics). O plano do time estava vago nisso.
 2. **patient_id igual entre os 3 módulos** (vídeo/áudio/clínico), senão a fusão
    não consegue juntar os alertas do mesmo paciente.
-3. Avisar que a parte de vídeo trocou o dataset para KIMORE (motivo acima).
+3. Avisar que a parte de vídeo usa o dataset REHAB24-6 (RGB público; o KIMORE RGB
+   exige EULA e não veio no download livre). Motivo detalhado acima.
 
 ## Como rodar (resumo)
 
@@ -78,11 +97,11 @@ python main.py --video data/entrada/video.mp4 --patient-id video_001 \
 # Máquina fraca: desativa YOLOv8
 python main.py --video data/entrada/video.mp4 --sem-objetos
 
-# Calibração com dataset
-# 1) valida a estrutura de pastas (dry-run, não processa):
-python calibrar.py --raiz "/content/drive/MyDrive/KIMORE_amostra" --listar
-# 2) processa e sugere limiares:
-python calibrar.py --raiz "/content/drive/MyDrive/KIMORE_amostra" --pular-frames 6 --max 40
-# (opcional) se houver vídeos de depth junto dos RGB:
-python calibrar.py --raiz "/content/drive/MyDrive/KIMORE_amostra" --listar --filtro-nome rgb
+# Calibração com dataset REHAB24-6 (rótulo correto/incorreto vem do Segmentation.csv)
+# 1) valida CSV + matching de vídeo (dry-run, não processa):
+python calibrar.py --raiz "/content/drive/MyDrive/REHAB24-6" --listar
+# 2) processa e sugere limiares (recomendado focar 1 exercício por vez):
+python calibrar.py --raiz "/content/drive/MyDrive/REHAB24-6" --exercise 6 --pular-frames 3
+# (opcional) fixar uma câmera se houver mais de um vídeo por gravação:
+python calibrar.py --raiz "/content/drive/MyDrive/REHAB24-6" --camera Camera18 --listar
 ```

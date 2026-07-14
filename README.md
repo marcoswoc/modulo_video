@@ -80,15 +80,21 @@ anotado. Recomendado para máquinas sem GPU/processamento sobrando.
 ## Dataset
 
 Este módulo processa **vídeo RGB** (via MediaPipe Pose), a mesma técnica vista
-em aula. Por isso usamos o **KIMORE** (exercícios de fisioterapia gravados com
-câmera RGB-D, gratuito para pesquisa).
+em aula. Por isso usamos o **[REHAB24-6](https://zenodo.org/records/13305826)**
+(exercícios de reabilitação gravados em RGB por duas câmeras, publicado no Zenodo
+sob licença CC-BY-NC, download livre e sem EULA). Cada repetição tem rótulo
+binário de **execução correta (1) x incorreta (0)** no `Segmentation.csv`, o que
+mapeia diretamente no conceito de anomalia da spec ("movimentos fora do padrão
+esperado"). O `calibrar.py` usa esse rótulo para ajustar os limiares em `config.py`.
 
-> Observação: o dataset *Multi-Gait-Posture* (PhysioNet) **não** foi adotado
-> porque contém apenas profundidade (depth) e esqueleto (CSV/C3D), sem vídeo
-> RGB, o que seria incompatível com o pipeline baseado em MediaPipe.
+> Datasets descartados e o porquê:
+> - *Multi-Gait-Posture* (PhysioNet): apenas profundidade (depth) e esqueleto
+>   (CSV/C3D), sem vídeo RGB, incompatível com o pipeline baseado em MediaPipe.
+> - *KIMORE*: o vídeo RGB só é liberado sob pedido ao autor e assinatura de EULA;
+>   o download público traz apenas depth + esqueleto (mesma limitação acima).
 
 ## Próximos passos (evolução)
 
-- Calibrar os limiares em `config.py` com amostras do dataset **KIMORE**.
+- Calibrar os limiares em `config.py` com o dataset **REHAB24-6** (`calibrar.py`).
 - Opcional: treinar um **Isolation Forest** sobre as métricas (ver TODO em `anomaly_detector.py`).
 - Integrar com os módulos de áudio e clínico na etapa de fusão.

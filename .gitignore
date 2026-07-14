@@ -32,6 +32,14 @@ data/exemplos/*
 # Material das aulas (PDFs do curso, personalizados/protegidos: nao versionar)
 Aulas/
 
+# Modelos YOLO baixados automaticamente na primeira execucao
+*.pt
+
+# Dataset REHAB24-6 (grande / publico no Zenodo: nao versionar)
+*.zip
+Segmentation.csv
+REHAB24-6/
+
 # Editores / SO
 .vscode/
 .idea/

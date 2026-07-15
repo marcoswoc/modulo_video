@@ -30,13 +30,19 @@ def _gravidade(valor: float, limiar: float, teto: float) -> float:
     return min((valor - limiar) / (teto - limiar + 1e-9), 1.0)
 
 
-def detectar_anomalias(metricas: dict) -> list[dict]:
-    """Recebe as metricas biomecanicas e devolve a lista de anomalias."""
+def detectar_anomalias(metricas: dict, limiares: dict | None = None) -> list[dict]:
+    """Recebe as metricas biomecanicas e devolve a lista de anomalias.
+
+    'limiares' permite passar um conjunto alternativo (ex.: calibrado). Se None,
+    usa os do config.py (os chutes).
+    """
+    if limiares is None:
+        limiares = LIMIARES
     anomalias: list[dict] = []
 
     # --- Regra 1: inclinacao excessiva do tronco ---------------------------
     inc = metricas["inclinacao_tronco_graus"]
-    lim = LIMIARES["inclinacao_tronco_graus"]
+    lim = limiares["inclinacao_tronco_graus"]
     if inc > lim:
         anomalias.append({
             "chave": "inclinacao_tronco",
@@ -46,7 +52,7 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
 
     # --- Regra 2: assimetria de marcha -------------------------------------
     ass = metricas["assimetria_marcha"]
-    lim = LIMIARES["assimetria_marcha"]
+    lim = limiares["assimetria_marcha"]
     if ass > lim:
         anomalias.append({
             "chave": "assimetria_marcha",
@@ -56,7 +62,7 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
 
     # --- Regra 3: instabilidade / perda de equilibrio ----------------------
     inst = metricas["instabilidade_lateral"]
-    lim = LIMIARES["instabilidade_lateral"]
+    lim = limiares["instabilidade_lateral"]
     if inst > lim:
         anomalias.append({
             "chave": "instabilidade",
@@ -66,7 +72,7 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
 
     # --- Regra 4: velocidade fora do padrao --------------------------------
     vel = metricas["velocidade"]
-    vmin, vmax = LIMIARES["velocidade_min"], LIMIARES["velocidade_max"]
+    vmin, vmax = limiares["velocidade_min"], limiares["velocidade_max"]
     if vel < vmin or vel > vmax:
         sentido = "abaixo" if vel < vmin else "acima"
         anomalias.append({
@@ -79,7 +85,7 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
     # --- Regra 5: possivel queda do paciente (YOLOv8) ---------------------
     # Usamos .get() porque a deteccao de objetos pode estar desligada (--sem-objetos).
     pq = metricas.get("prop_frames_queda", 0.0)
-    lim = LIMIARES["prop_frames_queda"]
+    lim = limiares["prop_frames_queda"]
     if pq > lim:
         anomalias.append({
             "chave": "queda",
@@ -89,7 +95,7 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
 
     # --- Regra 6: paciente ausente / rastreamento perdido (YOLOv8) --------
     ps = metricas.get("prop_frames_sem_pessoa", 0.0)
-    lim = LIMIARES["prop_frames_sem_pessoa"]
+    lim = limiares["prop_frames_sem_pessoa"]
     if ps > lim:
         anomalias.append({
             "chave": "paciente_ausente",
@@ -99,7 +105,7 @@ def detectar_anomalias(metricas: dict) -> list[dict]:
 
     # --- Regra 7: numero de pessoas acima do esperado (YOLOv8) ------------
     max_pessoas = metricas.get("max_pessoas", 0)
-    esperado = LIMIARES["pessoas_esperadas"]
+    esperado = limiares["pessoas_esperadas"]
     if max_pessoas > esperado:
         anomalias.append({
             "chave": "multiplas_pessoas",

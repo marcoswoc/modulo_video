@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 
 from config import LIMIARES
@@ -281,6 +282,22 @@ def comparar_e_sugerir(resultados: list[dict]) -> None:
     print("sugestoes como ponto de partida e ajuste os valores em config.py.")
 
 
+def calcular_limiares(resultados: list[dict]) -> dict:
+    """Deriva os limiares calibrados das execucoes corretas (p90; faixa p10..p90
+    para velocidade). So inclui a metrica se houver amostras corretas suficientes."""
+    corretos = [r for r in resultados if r["rotulo"] == "correto"]
+    lim: dict = {}
+    for m in ("inclinacao_tronco_graus", "assimetria_marcha", "instabilidade_lateral"):
+        vals = [float(r[m]) for r in corretos]
+        if len(vals) >= 3:
+            lim[m] = round(_percentil(vals, 90), 4)
+    vals_v = [float(r["velocidade"]) for r in corretos]
+    if len(vals_v) >= 3:
+        lim["velocidade_min"] = round(_percentil(vals_v, 10), 4)
+        lim["velocidade_max"] = round(_percentil(vals_v, 90), 4)
+    return lim
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Calibracao de limiares com o REHAB24-6")
     parser.add_argument("--raiz", required=True,
@@ -299,6 +316,9 @@ def main() -> None:
                         help="Limita o numero de gravacoes processadas (0 = todas)")
     parser.add_argument("--listar", action="store_true",
                         help="Dry-run: valida CSV + matching de video SEM processar")
+    parser.add_argument("--salvar-limiares", default="",
+                        help="Salva os limiares calibrados num JSON (ex.: data/saida/limiares.json), "
+                             "usado depois pelo comparar_video.py")
     args = parser.parse_args()
 
     caminho_csv = args.csv or os.path.join(args.raiz, CSV_ANOTACAO)
@@ -336,6 +356,15 @@ def main() -> None:
     print(f"\nCSV salvo em: {args.saida_csv}")
 
     comparar_e_sugerir(resultados)
+
+    if args.salvar_limiares:
+        lim = calcular_limiares(resultados)
+        os.makedirs(os.path.dirname(args.salvar_limiares) or ".", exist_ok=True)
+        with open(args.salvar_limiares, "w", encoding="utf-8") as f:
+            json.dump(lim, f, ensure_ascii=False, indent=2)
+        print(f"\nLimiares calibrados salvos em: {args.salvar_limiares}")
+        print(json.dumps(lim, ensure_ascii=False))
+        print("Use no comparar_video.py com --limiares", args.salvar_limiares)
 
 
 if __name__ == "__main__":

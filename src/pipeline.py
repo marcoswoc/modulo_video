@@ -21,18 +21,18 @@ from src.risk_scoring import calcular_score, classificar_nivel, recomendar
 from src.report import montar_alerta
 
 
-def processar_video(
+def extrair_metricas_video(
     caminho_video: str,
-    patient_id: str,
     salvar_anotado: str | None = None,
     usar_objetos: bool = True,
     verbose: bool = True,
 ) -> dict:
     """
-    Executa o pipeline completo para UM video e devolve o alerta padronizado.
+    Etapas 1, 1b e 2: video -> metricas (biomecanicas + eventos do YOLOv8).
 
-    Se usar_objetos=True, roda tambem a deteccao com YOLOv8 (etapa 1b) e
-    junta as metricas de eventos (queda, ausencia, contagem) as biomecanicas.
+    So depende do VIDEO, nao dos limiares. Isso permite extrair as metricas uma
+    vez e depois aplicar diferentes conjuntos de limiares (ex.: comparar chute x
+    calibrado) sem reprocessar o video.
     """
     # (1) Video -> pontos-chave (postura / MediaPipe)
     if verbose:
@@ -57,22 +57,48 @@ def processar_video(
     if verbose:
         for k, v in metricas.items():
             print(f"      - {k}: {v}")
+    return metricas
 
-    # (3) Metricas -> anomalias
-    if verbose:
-        print("[3/5] Aplicando regras de deteccao de anomalias...")
-    anomalias = detectar_anomalias(metricas)
 
-    # (4) Anomalias -> score e nivel
-    if verbose:
-        print("[4/5] Calculando score e nivel de risco...")
+def alerta_de_metricas(
+    patient_id: str,
+    metricas: dict,
+    limiares: dict | None = None,
+) -> dict:
+    """
+    Etapas 3, 4 e 5: metricas + limiares -> alerta padronizado.
+
+    Se 'limiares' for None, usa os do config.py (os chutes). Passando outro
+    dicionario, aplica limiares alternativos (ex.: calibrados) as MESMAS metricas.
+    """
+    anomalias = detectar_anomalias(metricas, limiares)
     score = calcular_score(anomalias)
     nivel = classificar_nivel(score)
     recomendacao = recomendar(nivel, anomalias)
+    return montar_alerta(patient_id, anomalias, score, nivel, recomendacao)
 
-    # (5) Monta o alerta padronizado
+
+def processar_video(
+    caminho_video: str,
+    patient_id: str,
+    salvar_anotado: str | None = None,
+    usar_objetos: bool = True,
+    verbose: bool = True,
+    limiares: dict | None = None,
+) -> dict:
+    """
+    Executa o pipeline completo para UM video e devolve o alerta padronizado.
+
+    Se usar_objetos=True, roda tambem a deteccao com YOLOv8 (etapa 1b) e
+    junta as metricas de eventos (queda, ausencia, contagem) as biomecanicas.
+    'limiares' permite sobrepor os do config.py (None = usa os chutes).
+    """
+    metricas = extrair_metricas_video(
+        caminho_video, salvar_anotado=salvar_anotado,
+        usar_objetos=usar_objetos, verbose=verbose,
+    )
     if verbose:
+        print("[3/5] Aplicando regras de deteccao de anomalias...")
+        print("[4/5] Calculando score e nivel de risco...")
         print("[5/5] Montando alerta padronizado.")
-    alerta = montar_alerta(patient_id, anomalias, score, nivel, recomendacao)
-
-    return alerta
+    return alerta_de_metricas(patient_id, metricas, limiares)

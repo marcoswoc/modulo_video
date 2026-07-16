@@ -1,0 +1,9 @@
+{
+  "patient_id": "rehab_PM_029",
+  "modulo": "video_fisioterapia",
+  "tipo_anomalia": "movimento",
+  "score_risco": 0.0,
+  "nivel_risco": "baixo",
+  "descricao": "Nenhum desvio significativo de postura ou marcha.",
+  "recomendacao": "Nenhum desvio relevante detectado. Manter acompanhamento de rotina."
+}

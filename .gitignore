@@ -28,6 +28,7 @@ data/exemplos/*
 !data/exemplos/.gitkeep
 !data/exemplos/*.json
 !data/exemplos/*.csv
+!data/exemplos/*.md
 
 # Material das aulas (PDFs do curso, personalizados/protegidos: nao versionar)
 Aulas/

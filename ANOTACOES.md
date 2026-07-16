@@ -61,19 +61,18 @@ cd modulo_video
 
 ## Pendências (próximos passos)
 
-- [ ] Baixar o REHAB24-6 (Zenodo): `videos.zip` (2.7 GB) + `Segmentation.csv`.
-      Descompactar os vídeos numa pasta, deixar o `Segmentation.csv` junto (ou
-      apontar com `--csv`), subir no Google Drive.
-      ANTES de processar, validar com o dry-run (não processa, não precisa de
-      cv2/mediapipe):
-      `python calibrar.py --raiz .../REHAB24-6 --listar`
-      Isso mostra, por gravação (video_id), qual arquivo de vídeo casou e quantas
-      repetições corretas/incorretas há. Se o matching de vídeo falhar, conferir o
-      nome real dos arquivos e passar `--camera <token>` (ex.: Camera18) para fixar
-      uma câmera. Depois rodar de fato (ex.: focar 1 exercício):
-      `python calibrar.py --raiz .../REHAB24-6 --exercise 6 --pular-frames 3`
-      A saída compara métricas de execução CORRETA x INCORRETA e sugere limiares.
-- [ ] Versionar um JSON de exemplo em `data/exemplos/` (e o CSV de calibração).
+- [x] Baixar o REHAB24-6 e calibrar. FEITO: exercício 6 (agachamento), Camera17,
+      9 gravações, 195 repetições (134 corretas, 61 incorretas). Arquivos reais em
+      `videos.zip`/`Segmentation.csv` (na raiz, gitignored). Matching por video_id
+      (ex.: PM_029), token `Camera17`.
+- [x] Versionar exemplos de saída em `data/exemplos/` (calibracao_agachamento.csv,
+      limiares_agachamento.json, alerta_agachamento.json, README.md com tabelas).
+      RESULTADO/ACHADO: os chutes do config estavam fora de escala (instabilidade
+      0.04 vs real ~0.005-0.014). Para agachamento, inclinação de tronco e
+      velocidade separam correto x incorreto; assimetria (métrica de marcha) e
+      instabilidade quase não separam agachamento (esperado). Ver
+      `data/exemplos/README.md`. NÃO gravei os valores calibrados no config.py
+      (fluxo stateless: `calibrar.py --salvar-limiares` + `comparar_video.py`).
 - [ ] Escrever o relatório técnico da parte de vídeo (fluxo, modelos, métricas,
       exemplos, justificativa do dataset).
 - [ ] Gravar o vídeo/demo de até 15 min (o `_web.mp4` anotado serve).

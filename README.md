@@ -34,7 +34,10 @@ O módulo usa **dois modelos** de visão, como pede o desafio:
 | `src/risk_scoring.py` | (4) Anomalias → score 0–1 e nível baixo/moderado/alto |
 | `src/report.py` | (5) Monta o alerta no schema padrão e salva JSON/CSV |
 | `src/pipeline.py` | Orquestra as 5 etapas |
-| `main.py` | Linha de comando (CLI) |
+| `main.py` | Linha de comando (CLI) para analisar um vídeo |
+| `calibrar.py` | Calibra os limiares com o REHAB24-6 (correto x incorreto) |
+| `avaliar.py` | Compara o desempenho dos limiares antes x depois (nos dados rotulados) |
+| `comparar_video.py` | Mostra o alerta antes x depois da calibração num mesmo vídeo |
 
 ## Rodar local (Windows / PowerShell)
 
@@ -62,13 +65,35 @@ O resultado sai em `data\saida\`: o alerta `.json` e o video `_anotado.mp4` (cod
 
 ### Calibrar os limiares (opcional)
 
-Precisa do REHAB24-6 na maquina (descompacte o `videos.zip` e deixe o
-`Segmentation.csv` junto):
+Os limiares em `config.py` sao chutes iniciais. A calibracao usa o dataset
+REHAB24-6 (video RGB com rotulo de execucao correta/incorreta por repeticao) para
+ajusta-los com dados reais. Precisa do dataset na maquina (descompacte o
+`videos.zip` e deixe o `Segmentation.csv` junto).
+
+O processo e **stateless**: o `config.py` nunca e alterado. A calibracao apenas
+sugere valores e (opcionalmente) os grava num JSON aplicado so em tempo de execucao.
 
 ```powershell
+# 1) validar CSV + matching de video (dry-run, nao processa)
 python calibrar.py --raiz "C:\caminho\REHAB24-6" --listar --camera Camera17
-python calibrar.py --raiz "C:\caminho\REHAB24-6" --camera Camera17 --exercise 6 --pular-frames 5
+
+# 2) calibrar 1 exercicio e salvar os limiares calibrados num JSON
+python calibrar.py --raiz "C:\caminho\REHAB24-6" --camera Camera17 --exercise 6 --pular-frames 5 --salvar-limiares data\saida\limiares.json
 ```
+
+**Comparar limiares antes x depois.** Duas formas:
+
+```powershell
+# a) nos dados rotulados: sensibilidade e falso positivo do limiar do config vs o calibrado
+python avaliar.py --exercise 6
+
+# b) num video: mesmo video, alerta com os chutes e com os calibrados, lado a lado
+python comparar_video.py --video data\entrada\sessao01.mp4 --limiares data\saida\limiares.json
+```
+
+`avaliar.py` le o `data\saida\calibracao.csv` gerado no passo 2; `comparar_video.py`
+processa o video uma vez e monta os dois alertas sobre as mesmas metricas, sem tocar
+no `config.py`.
 
 ### Rodar no Google Colab (sem instalar nada localmente)
 
